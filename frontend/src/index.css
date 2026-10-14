@@ -1,0 +1,73 @@
+/* Import Tailwind v4 Engine */
+@import "tailwindcss";
+
+/* 
+  ========================================
+  GITF DESIGN SYSTEM TOKENS
+  ========================================
+*/
+@theme {
+  /* Typography */
+  --font-sans: 'Inter', sans-serif;
+  --font-condensed: 'Oswald', sans-serif;
+
+  /* Premium Institutional Color Palette */
+  --color-brand-lime: #C4C957;
+  --color-brand-soft-lime: #D0D77A;
+  --color-brand-sage: #AFC19A;
+  --color-brand-blue-green: #9AB8B8;
+  --color-brand-pale-blue: #AFC8CF;
+  --color-brand-deep-teal: #2F6470;
+  --color-brand-charcoal: #111111;
+  --color-brand-off-white: #F7F5EA;
+  --color-brand-white: #FFFFFF;
+}
+
+/* 
+  ========================================
+  GLOBAL BASE STYLES
+  ========================================
+*/
+@layer base {
+  body {
+    @apply bg-brand-off-white text-brand-charcoal font-sans antialiased overflow-x-hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-condensed uppercase tracking-tight text-brand-charcoal;
+  }
+}
+
+/* 
+  ========================================
+  EDITORIAL UTILITY CLASSES
+  ========================================
+*/
+@layer utilities {
+  /* The subtle gradients requested for storytelling sections */
+  .bg-gradient-lime-sage {
+    background: linear-gradient(135deg, var(--color-brand-lime) 0%, var(--color-brand-sage) 100%);
+  }
+  
+  .bg-gradient-sage-teal {
+    background: linear-gradient(135deg, var(--color-brand-sage) 0%, var(--color-brand-blue-green) 100%);
+  }
+  
+  .bg-gradient-blue-sage {
+    background: linear-gradient(135deg, var(--color-brand-pale-blue) 0%, var(--color-brand-sage) 100%);
+  }
+  
+  .bg-gradient-offwhite-blue {
+    background: linear-gradient(135deg, var(--color-brand-off-white) 0%, var(--color-brand-pale-blue) 100%);
+  }
+
+  /* Thin divider lines for editorial composition */
+  .border-editorial {
+    @apply border-brand-charcoal/20 border-t;
+  }
+
+  /* Image overlay gradient for Hero and large photo sections */
+  .overlay-gradient {
+    background: linear-gradient(to top, rgba(17, 17, 17, 0.9) 0%, rgba(17, 17, 17, 0.2) 50%, rgba(17, 17, 17, 0.1) 100%);
+  }
+}
