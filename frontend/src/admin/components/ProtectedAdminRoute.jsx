@@ -1,4 +1,3 @@
-// src/admin/components/ProtectedAdminRoute.jsx
 
 import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
@@ -7,6 +6,8 @@ export default function ProtectedAdminRoute() {
   const [status, setStatus] = useState('checking');
 
   useEffect(() => {
+    let cancelled = false;
+
     const checkAuthentication = async () => {
       try {
         const response = await fetch(
@@ -17,18 +18,34 @@ export default function ProtectedAdminRoute() {
           }
         );
 
-        if (response.ok) {
-          setStatus('authenticated');
-        } else {
-          setStatus('unauthenticated');
+        if (!response.ok) {
+          if (!cancelled) setStatus('unauthenticated');
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!cancelled) {
+          setStatus(
+            data.success && data.admin
+              ? 'authenticated'
+              : 'unauthenticated'
+          );
         }
       } catch (error) {
         console.error('Authentication check failed:', error);
-        setStatus('unauthenticated');
+
+        if (!cancelled) {
+          setStatus('unauthenticated');
+        }
       }
     };
 
     checkAuthentication();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (status === 'checking') {

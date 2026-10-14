@@ -12,21 +12,21 @@ import {
 export default function AdminSidebar() {
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    try {
-      await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,
-        {
-          method: 'POST',
-          credentials: 'include',
-        }
-      );
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      navigate('/admin/login');
-    }
-  };
+const handleLogout = async () => {
+  try {
+    await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,
+      {
+        method: 'POST',
+        credentials: 'include',
+      }
+    );
+  } catch (error) {
+    console.error('Logout failed:', error);
+  } finally {
+    window.location.replace('/admin/login');
+  }
+};
 
   const navItems = [
     {
