@@ -38,17 +38,17 @@ export default function AdminLogin() {
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(formData),
-        }
-      );
+      const API_URL =
+        import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      });
 
 
       const data = await response.json();
@@ -68,7 +68,7 @@ export default function AdminLogin() {
       }
 
 
-localStorage.setItem('adminEmail', data.admin.email);
+      localStorage.setItem('adminEmail', data.admin.email);
 
       navigate('/admin/dashboard');
     } catch (error) {
