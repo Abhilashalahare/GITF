@@ -20,28 +20,17 @@ const app = express();
  * CORS CONFIGURATION
  * --------------------------------------------------
  */
-
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://gitf-bivv.onrender.com/'
-];
+  process.env.FRONTEND_URL
+].filter(Boolean);
 
 app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
-    methods: [
-      'GET',
-      'POST',
-      'PUT',
-      'PATCH',
-      'DELETE',
-      'OPTIONS',
-    ],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
