@@ -6,8 +6,15 @@ import VisionMission from '../components/sections/VisionMission';
 import ValuesGrid from '../components/sections/ValuesGrid';
 import { aboutData } from '../data/about';
 import { homeData } from '../data/home'; // Reusing vision/mission from home
+import useWebsiteMedia from '../hooks/useWebsiteMedia';
+
+
+const API_URL = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+  }/api/website-media`;
+
 
 export default function About() {
+    const { media, loading } = useWebsiteMedia();
   return (
     <>
       <Helmet>
@@ -24,10 +31,11 @@ export default function About() {
         heading="Our School"
         subheading="A pathway to learning, hope and possibility."
         body={aboutData.intro.body}
-        imageSrc={aboutData.intro.image}
-        imageAlt="School building"
+        imageSrc={ media['about/intro-1']?.mediaUrl ||aboutData.intro.image}
+        imageAlt= {media['about/intro-1']?.altText ||"School building"}
         reverse={false}
       />
+
 
       {/* GITF Section with points */}
       <section className="py-24 px-6 md:px-12 bg-brand-off-white border-t border-editorial">
@@ -44,7 +52,7 @@ export default function About() {
             </ul>
           </div>
           <div className="aspect-square bg-brand-pale-blue overflow-hidden">
-            <img src={aboutData.gitf.image} alt="Foundation work" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700" />
+            <img src={media['about/intro-2']?.mediaUrl || aboutData.gitf.image} alt="Foundation work" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700" />
           </div>
         </div>
       </section>

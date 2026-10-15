@@ -1,8 +1,8 @@
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const API_URL = `${
-  import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+  (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000').replace(/\/$/, '')
 }/api/website-media`;
 
 const sections = [
@@ -22,6 +22,43 @@ const initialForm = {
   altText: '',
 };
 
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
+
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+];
+
+// Allows letters, numbers, /, _ and -
+const VALID_KEY = /^[a-zA-Z0-9/_-]+$/;
+
+async function readResponse(response) {
+  const text = await response.text();
+
+  let data;
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(
+      `Server returned an invalid response (HTTP ${response.status}).`
+    );
+  }
+
+  if (!response.ok || data.success === false) {
+    throw new Error(
+      data.message ||
+        data.error ||
+        `Request failed (HTTP ${response.status}).`
+    );
+  }
+
+  return data;
+}
+
 export default function AdminWebsiteMedia() {
   const [media, setMedia] = useState([]);
   const [form, setForm] = useState(initialForm);
@@ -29,78 +66,129 @@ export default function AdminWebsiteMedia() {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  // Fetch all media for the admin panel.
-  const fetchMedia = useCallback(async () => {
-    setFetching(true);
-    setError('');
+  const fileInputRef = useRef(null);
 
-    try {
-      const response = await fetch(`${API_URL}/admin`, {
-        method: 'GET',
-        credentials: 'include',
-      });
+  const fetchMedia = useCallback(
+    async ({ showLoading = true } = {}) => {
+      if (showLoading) setFetching(true);
 
-      const result = await response.json();
+      try {
+        const response = await fetch(`${API_URL}/admin`, {
+          credentials: 'include',
+        });
 
-      if (!response.ok) {
-        throw new Error(
-          result.message || 'Failed to load website media.'
-        );
+        const result = await readResponse(response);
+
+        setMedia(Array.isArray(result.data) ? result.data : []);
+        setError('');
+      } catch (err) {
+        setError(err.message || 'Unable to load website media.');
+      } finally {
+        if (showLoading) setFetching(false);
       }
-
-      setMedia(result.data || []);
-    } catch (err) {
-      setError(
-        err.message || 'Unable to load website media.'
-      );
-    } finally {
-      setFetching(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     fetchMedia();
   }, [fetchMedia]);
 
-  // Handle text inputs.
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
     setForm((previous) => ({
       ...previous,
       [name]: value,
     }));
+
+    setError('');
+    setMessage('');
   };
 
-  // Handle file selection.
-  const handleFileChange = (e) => {
-    setFile(e.target.files?.[0] || null);
-  };
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files?.[0] || null;
 
-  // Upload new media or replace an existing placement.
-  const handleUpload = async (e) => {
-    e.preventDefault();
+    setFile(selectedFile);
     setError('');
     setMessage('');
 
-    if (!file) {
-      setError('Please select an image or video.');
+    if (!selectedFile) return;
+
+    if (!ALLOWED_TYPES.includes(selectedFile.type)) {
+      setError('Only JPG, PNG, WebP and MP4 files are supported.');
+      setFile(null);
+      event.target.value = '';
       return;
     }
 
-    if (!form.name.trim() || !form.key.trim()) {
+    const isVideo = selectedFile.type.startsWith('video/');
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+
+    if (selectedFile.size > maxSize) {
+      setError(
+        isVideo
+          ? 'Video must be 100 MB or smaller.'
+          : 'Image must be 10 MB or smaller.'
+      );
+
+      setFile(null);
+      event.target.value = '';
+    }
+  };
+
+  const handleUpload = async (event) => {
+    event.preventDefault();
+
+    setError('');
+    setMessage('');
+
+    const name = form.name.trim();
+    const key = form.key.trim().toLowerCase();
+
+    if (!name || !key) {
       setError('Media name and placement key are required.');
+      return;
+    }
+
+    if (!VALID_KEY.test(key)) {
+      setError(
+        'Placement key can contain only letters, numbers, /, _ and -.'
+      );
+      return;
+    }
+
+    if (!file) {
+      setError('Please select a valid image or video.');
+      return;
+    }
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError('Only JPG, PNG, WebP and MP4 files are supported.');
+      return;
+    }
+
+    const isVideo = file.type.startsWith('video/');
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+
+    if (file.size > maxSize) {
+      setError(
+        isVideo
+          ? 'Video must be 100 MB or smaller.'
+          : 'Image must be 10 MB or smaller.'
+      );
       return;
     }
 
     const formData = new FormData();
 
     formData.append('file', file);
-    formData.append('name', form.name.trim());
-    formData.append('key', form.key.trim().toLowerCase());
+    formData.append('name', name);
+    formData.append('key', key);
     formData.append('section', form.section);
     formData.append('altText', form.altText.trim());
 
@@ -113,76 +201,59 @@ export default function AdminWebsiteMedia() {
         body: formData,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.message || 'Failed to upload media.'
-        );
-      }
+      const result = await readResponse(response);
 
       setMessage(
         result.message || 'Website media uploaded successfully.'
       );
 
-      setForm(initialForm);
+      setForm({ ...initialForm });
       setFile(null);
 
-      const fileInput = document.getElementById(
-        'website-media-file'
-      );
-
-      if (fileInput) {
-        fileInput.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
 
-      await fetchMedia();
+      await fetchMedia({ showLoading: false });
     } catch (err) {
       setError(err.message || 'Unable to upload media.');
+      console.error('Website media upload failed:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Activate or deactivate a media item.
   const handleToggle = async (item) => {
     setError('');
     setMessage('');
+    setBusyId(item._id);
 
     try {
-      const response = await fetch(
-        `${API_URL}/${item._id}/status`,
-        {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            isActive: !item.isActive,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/${item._id}/status`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isActive: !item.isActive,
+        }),
+      });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.message || 'Failed to update media status.'
-        );
-      }
+      const result = await readResponse(response);
 
       setMessage(
         result.message || 'Media status updated successfully.'
       );
 
-      await fetchMedia();
+      await fetchMedia({ showLoading: false });
     } catch (err) {
       setError(err.message || 'Unable to update media status.');
+    } finally {
+      setBusyId(null);
     }
   };
 
-  // Delete media from MongoDB and Cloudinary.
   const handleDelete = async (item) => {
     const confirmed = window.confirm(
       `Delete "${item.name}"? This will also attempt to delete its Cloudinary file.`
@@ -192,6 +263,7 @@ export default function AdminWebsiteMedia() {
 
     setError('');
     setMessage('');
+    setBusyId(item._id);
 
     try {
       const response = await fetch(`${API_URL}/${item._id}`, {
@@ -199,38 +271,32 @@ export default function AdminWebsiteMedia() {
         credentials: 'include',
       });
 
-      const result = await response.json();
+      const result = await readResponse(response);
 
-      if (!response.ok) {
-        throw new Error(
-          result.message || 'Failed to delete media.'
-        );
-      }
+      setMessage(result.message || 'Media deleted successfully.');
 
-      setMessage(
-        result.message || 'Media deleted successfully.'
-      );
-
-      await fetchMedia();
+      await fetchMedia({ showLoading: false });
     } catch (err) {
       setError(err.message || 'Unable to delete media.');
+    } finally {
+      setBusyId(null);
     }
   };
 
-  // Filter media by website section.
   const visibleMedia =
     filter === 'all'
       ? media
       : media.filter((item) => item.section === filter);
 
   const getSectionLabel = (value) =>
-    sections.find((section) => section.value === value)?.label ||
-    value;
+    sections.find((section) => section.value === value)?.label || value;
+
+  const inputClass =
+    'w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
-        {/* Page heading */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
             Website Media Manager
@@ -241,7 +307,6 @@ export default function AdminWebsiteMedia() {
           </p>
         </div>
 
-        {/* Error message */}
         {error && (
           <div
             role="alert"
@@ -249,16 +314,16 @@ export default function AdminWebsiteMedia() {
           >
             {error}
 
-            {error.toLowerCase().includes('login') ||
-            error.toLowerCase().includes('authorized') ? (
+            {(error.toLowerCase().includes('login') ||
+              error.toLowerCase().includes('authorized') ||
+              error.toLowerCase().includes('unauthorized')) && (
               <p className="mt-2">
                 Your session may have expired. Please log in again.
               </p>
-            ) : null}
+            )}
           </div>
         )}
 
-        {/* Success message */}
         {message && (
           <div
             role="status"
@@ -268,7 +333,7 @@ export default function AdminWebsiteMedia() {
           </div>
         )}
 
-        {/* Upload form */}
+        {/* Upload Form */}
         <section className="mb-10 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="mb-5 text-xl font-semibold text-gray-900">
             Upload Website Media
@@ -276,7 +341,6 @@ export default function AdminWebsiteMedia() {
 
           <form onSubmit={handleUpload} className="space-y-5">
             <div className="grid gap-5 sm:grid-cols-2">
-              {/* Media name */}
               <div>
                 <label
                   htmlFor="media-name"
@@ -293,11 +357,10 @@ export default function AdminWebsiteMedia() {
                   placeholder="Homepage Hero"
                   maxLength={150}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className={inputClass}
                 />
               </div>
 
-              {/* Website section */}
               <div>
                 <label
                   htmlFor="media-section"
@@ -312,20 +375,16 @@ export default function AdminWebsiteMedia() {
                   value={form.section}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5"
+                  className={inputClass}
                 >
                   {sections.map((section) => (
-                    <option
-                      key={section.value}
-                      value={section.value}
-                    >
+                    <option key={section.value} value={section.value}>
                       {section.label}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Placement key */}
               <div>
                 <label
                   htmlFor="media-key"
@@ -341,19 +400,16 @@ export default function AdminWebsiteMedia() {
                   onChange={handleChange}
                   placeholder="home/hero"
                   maxLength={150}
-                  pattern="[a-zA-Z0-9/_-]+"
-                  title="Use letters, numbers, slashes, underscores, or hyphens."
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className={inputClass}
                 />
 
                 <p className="mt-1 text-xs text-gray-500">
-                  Use a unique key for each placement. An existing key
-                  replaces that placement.
+                  Use letters, numbers, /, _ or -. An existing key replaces
+                  that placement.
                 </p>
               </div>
 
-              {/* Alt text */}
               <div>
                 <label
                   htmlFor="media-alt"
@@ -369,12 +425,11 @@ export default function AdminWebsiteMedia() {
                   onChange={handleChange}
                   placeholder="Students participating in activities"
                   maxLength={300}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5"
+                  className={inputClass}
                 />
               </div>
             </div>
 
-            {/* File input */}
             <div>
               <label
                 htmlFor="website-media-file"
@@ -384,6 +439,7 @@ export default function AdminWebsiteMedia() {
               </label>
 
               <input
+                ref={fileInputRef}
                 id="website-media-file"
                 type="file"
                 accept="image/jpeg,image/png,image/webp,video/mp4"
@@ -393,13 +449,15 @@ export default function AdminWebsiteMedia() {
               />
 
               <p className="mt-1 text-xs text-gray-500">
-                JPG, PNG, WebP or MP4. Maximum 50 MB.
+                JPG, PNG, WebP or MP4. Maximum image size: 10 MB; video
+                size: 100 MB.
               </p>
             </div>
 
             {file && (
               <p className="break-all text-sm text-gray-600">
-                Selected: {file.name}
+                Selected: {file.name} (
+                {(file.size / (1024 * 1024)).toFixed(2)} MB)
               </p>
             )}
 
@@ -413,7 +471,7 @@ export default function AdminWebsiteMedia() {
           </form>
         </section>
 
-        {/* Uploaded media */}
+        {/* Uploaded Media */}
         <section>
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -429,16 +487,13 @@ export default function AdminWebsiteMedia() {
             <select
               aria-label="Filter media by website section"
               value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2.5"
+              onChange={(event) => setFilter(event.target.value)}
+              className={inputClass}
             >
               <option value="all">All Sections</option>
 
               {sections.map((section) => (
-                <option
-                  key={section.value}
-                  value={section.value}
-                >
+                <option key={section.value} value={section.value}>
                   {section.label}
                 </option>
               ))}
@@ -460,7 +515,6 @@ export default function AdminWebsiteMedia() {
                   key={item._id}
                   className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
                 >
-                  {/* Media preview */}
                   <div className="aspect-video bg-gray-100">
                     {item.mediaType === 'video' ? (
                       <video
@@ -503,28 +557,31 @@ export default function AdminWebsiteMedia() {
                     </div>
 
                     <div className="text-sm text-gray-600">
-                      <p>
-                        Section: {getSectionLabel(item.section)}
-                      </p>
-
+                      <p>Section: {getSectionLabel(item.section)}</p>
                       <p>Type: {item.mediaType}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
                       <button
                         type="button"
+                        disabled={busyId !== null}
                         onClick={() => handleToggle(item)}
-                        className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
+                        className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
                       >
-                        {item.isActive ? 'Deactivate' : 'Activate'}
+                        {busyId === item._id
+                          ? 'Updating...'
+                          : item.isActive
+                            ? 'Deactivate'
+                            : 'Activate'}
                       </button>
 
                       <button
                         type="button"
+                        disabled={busyId !== null}
                         onClick={() => handleDelete(item)}
-                        className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                        className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
                       >
-                        Delete
+                        {busyId === item._id ? 'Updating...' : 'Delete'}
                       </button>
                     </div>
                   </div>

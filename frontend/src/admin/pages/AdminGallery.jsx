@@ -44,7 +44,7 @@ export default function AdminGallery() {
     title: '',
     year: new Date().getFullYear().toString(),
     category: '',
-    file: null,
+    files: [],
   });
 
   // --------------------------------------------------
@@ -93,17 +93,26 @@ export default function AdminGallery() {
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0] || null;
+    const selectedFiles = Array.from(e.target.files || []);
+
+    if (selectedFiles.length > 10) {
+      setError('You can upload a maximum of 10 files at a time.');
+      e.target.value = '';
+      setFormData((prev) => ({ ...prev, files: [] }));
+      return;
+    }
+
+    setError('');
 
     setFormData((prev) => ({
       ...prev,
-      file,
+      files: selectedFiles,
     }));
   };
-
   // --------------------------------------------------
   // UPLOAD
   // --------------------------------------------------
+
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -123,8 +132,13 @@ export default function AdminGallery() {
       return;
     }
 
-    if (!formData.file) {
-      setError('Please select an image or video.');
+    if (!formData.files || formData.files.length === 0) {
+      setError('Please select at least one image or video.');
+      return;
+    }
+
+    if (formData.files.length > 10) {
+      setError('You can upload a maximum of 10 files at a time.');
       return;
     }
 
@@ -134,11 +148,14 @@ export default function AdminGallery() {
 
       const uploadData = new FormData();
 
-      uploadData.append('title', formData.title);
+      uploadData.append('title', formData.title.trim());
       uploadData.append('school', activeSchool);
-      uploadData.append('year', formData.year);
+      uploadData.append('year', formData.year.trim());
       uploadData.append('category', formData.category);
-      uploadData.append('file', formData.file);
+
+      formData.files.forEach((file) => {
+        uploadData.append('files', file);
+      });
 
       const response = await fetch(
         `${API_URL}/api/gallery/upload`,
@@ -151,26 +168,26 @@ export default function AdminGallery() {
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          data.message || 'Upload failed.'
-        );
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || 'Upload failed.');
       }
 
-      // Close modal
       setShowUploadModal(false);
 
-      // Reset form
       setFormData({
         title: '',
         year: new Date().getFullYear().toString(),
         category: '',
-        file: null,
+        files: [],
       });
 
-      // Refresh gallery
-      await fetchGallery();
+      // Clear the file input so the same files can be selected again.
+      const fileInput = document.querySelector(
+        'input[type="file"]'
+      );
+      if (fileInput) fileInput.value = '';
 
+      await fetchGallery();
     } catch (error) {
       console.error('Gallery Upload Error:', error);
       setError(error.message || 'Failed to upload media.');
@@ -178,6 +195,7 @@ export default function AdminGallery() {
       setUploading(false);
     }
   };
+
 
   // --------------------------------------------------
   // DELETE
@@ -278,11 +296,10 @@ export default function AdminGallery() {
               <button
                 key={school}
                 onClick={() => setActiveSchool(school)}
-                className={`px-8 py-3 text-xs font-bold uppercase tracking-widest transition-colors ${
-                  activeSchool === school
-                    ? 'bg-[#7E5CAD] text-white'
-                    : 'text-[#7E5CAD] hover:bg-[#7E5CAD]/10'
-                }`}
+                className={`px-8 py-3 text-xs font-bold uppercase tracking-widest transition-colors ${activeSchool === school
+                  ? 'bg-[#7E5CAD] text-white'
+                  : 'text-[#7E5CAD] hover:bg-[#7E5CAD]/10'
+                  }`}
               >
                 {school}
               </button>
@@ -441,9 +458,12 @@ export default function AdminGallery() {
 
       {/* UPLOAD MODAL */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-5 py-8">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-5 py-8 overflow-y-auto">
 
-          <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div
+            className="bg-white w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-y-contain"
+            onWheel={(e) => e.stopPropagation()}
+          >
 
             {/* MODAL HEADER */}
             <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
@@ -558,9 +578,9 @@ export default function AdminGallery() {
                   />
 
                   <span className="mt-3 text-sm font-bold text-gray-700">
-                    {formData.file
-                      ? formData.file.name
-                      : 'Choose a file'}
+                    {formData.files.length > 0
+                      ? `${formData.files.length} file(s) selected`
+                      : 'Choose up to 10 files'}
                   </span>
 
                   <span className="mt-1 text-xs text-gray-400">
@@ -569,6 +589,7 @@ export default function AdminGallery() {
 
                   <input
                     type="file"
+                    multiple
                     accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
                     onChange={handleFileChange}
                     className="hidden"

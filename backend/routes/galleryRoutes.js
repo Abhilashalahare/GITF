@@ -16,7 +16,7 @@ router.get('/', getGalleryItems);
 router.post(
   '/upload',
   protectAdmin,
-  uploadMiddleware.single('file'),
+  uploadMiddleware.array('files', 10),
   uploadGalleryItem
 );
 
