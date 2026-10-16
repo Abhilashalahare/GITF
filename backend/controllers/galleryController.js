@@ -77,19 +77,24 @@ export const uploadGalleryItem = async (req, res) => {
       });
     }
 
-    // Prepare one MongoDB document for each uploaded file.
-    const documents = files.map((file) => ({
-      title: title.trim(),
-      school,
-      year: year.trim(),
-      category: category.trim(),
-      mediaUrl: file.path,
-      publicId: file.public_id || file.filename,
-      mediaType:
-        file.resource_type === 'video' ? 'video' : 'image',
-    }));
+    // Create one database document for each uploaded file.
+    const documents = files.map((file) => {
+      const isVideo =
+        file.resource_type === 'video' ||
+        file.mimetype?.startsWith('video/');
 
-    // Save all records.
+      return {
+        title: title.trim(),
+        school,
+        year: year.trim(),
+        category: category.trim(),
+        mediaUrl: file.path,
+        publicId: file.public_id || file.filename,
+        mediaType: isVideo ? 'video' : 'image',
+      };
+    });
+
+    // Save all uploaded media to MongoDB.
     const savedItems = await GalleryItem.insertMany(documents);
 
     return res.status(201).json({
@@ -101,7 +106,6 @@ export const uploadGalleryItem = async (req, res) => {
   } catch (error) {
     console.error('Gallery Upload Error:', error);
 
-    // Remove uploaded Cloudinary files if saving failed.
     await cleanupCloudinaryFiles(files);
 
     return res.status(500).json({
