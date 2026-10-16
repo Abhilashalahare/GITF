@@ -14,27 +14,30 @@ const API_URL = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
 
 
 export default function About() {
-    const { media, loading } = useWebsiteMedia();
+  const { media, loading: loadingMedia } = useWebsiteMedia();
+  
   return (
     <>
       <Helmet>
         <title>About Us | Bhilai Ispat Vikas Vidyalaya</title>
         <meta name="description" content="Learn about BIVV, our partnership with Great India Talent Foundation, and our core values." />
       </Helmet>
-      
-      <PageHero 
-        title={aboutData.intro.heading} 
+
+      <PageHero
+        title={aboutData.intro.heading}
         colorClass="bg-brand-sage text-brand-charcoal"
       />
 
-      <EditorialSplit 
-        heading="Our School"
-        subheading="A pathway to learning, hope and possibility."
-        body={aboutData.intro.body}
-        imageSrc={ media['about/intro-1']?.mediaUrl ||aboutData.intro.image}
-        imageAlt= {media['about/intro-1']?.altText ||"School building"}
-        reverse={false}
-      />
+      {!loadingMedia && media['about/intro-1']?.mediaUrl && (
+        <EditorialSplit
+          heading="Our School"
+          subheading="A pathway to learning, hope and possibility."
+          body={aboutData.intro.body}
+          imageSrc={media['about/intro-1'].mediaUrl}
+          imageAlt={media['about/intro-1']?.altText || 'School building'}
+          reverse={false}
+        />
+      )}
 
 
       {/* GITF Section with points */}
@@ -52,14 +55,20 @@ export default function About() {
             </ul>
           </div>
           <div className="aspect-square bg-brand-pale-blue overflow-hidden">
-            <img src={media['about/intro-2']?.mediaUrl || aboutData.gitf.image} alt="Foundation work" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700" />
+            {!loadingMedia && media['about/intro-2']?.mediaUrl && (
+              <img
+                src={media['about/intro-2'].mediaUrl}
+                alt={media['about/intro-2']?.altText || 'Foundation work'}
+                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
+              />
+            )}
           </div>
         </div>
       </section>
 
       <ChairmanMessage data={aboutData.chairman} />
 
-      <VisionMission 
+      <VisionMission
         vision={homeData.visionMission.vision}
         mission={homeData.visionMission.mission}
       />

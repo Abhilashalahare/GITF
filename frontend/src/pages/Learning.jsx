@@ -7,7 +7,7 @@ import useWebsiteMedia from '../hooks/useWebsiteMedia';
 export default function Learning() {
 
 
-  const {media, loading} = useWebsiteMedia();
+  const { media, loading: loadingMedia } = useWebsiteMedia();
   return (
     <>
       <Helmet>
@@ -23,22 +23,26 @@ export default function Learning() {
       />
 
       {/* Render each section using EditorialSplit with alternating layouts */}
-      {learningData.sections.map((section, index) => {
-        const placementKey = `learning/${index + 1}`;
-        const uploadedMedia = media?.[placementKey];
+      {!loadingMedia &&
+        learningData.sections.map((section, index) => {
+          const placementKey = `learning/${index + 1}`;
+          const uploadedMedia = media?.[placementKey];
 
-        return (
-          <EditorialSplit
-            key={section.heading}
-            heading={section.heading}
-            subheading={section.subheading}
-            body={section.body}
-            imageSrc={uploadedMedia?.mediaUrl || section.image}
-            imageAlt={uploadedMedia?.altText || section.heading}
-            reverse={index % 2 !== 0}
-          />
-        );
-      })}
+          // Don't render the section until its uploaded image exists.
+          if (!uploadedMedia?.mediaUrl) return null;
+
+          return (
+            <EditorialSplit
+              key={section.heading}
+              heading={section.heading}
+              subheading={section.subheading}
+              body={section.body}
+              imageSrc={uploadedMedia.mediaUrl}
+              imageAlt={uploadedMedia.altText || section.heading}
+              reverse={index % 2 !== 0}
+            />
+          );
+        })}
     </>
   );
 }

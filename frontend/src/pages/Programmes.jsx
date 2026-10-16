@@ -6,7 +6,7 @@ import { programmesData } from '../data/programmes';
 import useWebsiteMedia from '../hooks/useWebsiteMedia';
 
 export default function Programmes() {
-  const { media, loading } = useWebsiteMedia();
+  const { media, loading: loadingMedia } = useWebsiteMedia();
 
   return (
     <>
@@ -26,22 +26,26 @@ export default function Programmes() {
       />
 
       {/* Render each programme with admin-managed images */}
-      {programmesData.items.map((item, index) => {
-        const placementKey = `programmes/${index + 1}`;
-        const uploadedMedia = media?.[placementKey];
+      {!loadingMedia &&
+        programmesData.items.map((item, index) => {
+          const placementKey = `programmes/${index + 1}`;
+          const uploadedMedia = media?.[placementKey];
 
-        return (
-          <EditorialSplit
-            key={item.heading}
-            heading={item.heading}
-            subheading={item.subheading}
-            body={item.body}
-            imageSrc={uploadedMedia?.mediaUrl || item.image}
-            imageAlt={uploadedMedia?.altText || item.heading}
-            reverse={index % 2 !== 0}
-          />
-        );
-      })}
+          // Skip items without an uploaded image.
+          if (!uploadedMedia?.mediaUrl) return null;
+
+          return (
+            <EditorialSplit
+              key={item.heading}
+              heading={item.heading}
+              subheading={item.subheading}
+              body={item.body}
+              imageSrc={uploadedMedia.mediaUrl}
+              imageAlt={uploadedMedia.altText || item.heading}
+              reverse={index % 2 !== 0}
+            />
+          );
+        })}
 
       {/* Special Learning Initiatives Section */}
       <section className="py-24 md:py-32 px-6 md:px-12 bg-[#7E5CAD] text-brand-white">

@@ -54,7 +54,7 @@ export default function Home() {
   //   };
   // }, []);
 
-  const { media, loading } = useWebsiteMedia();
+  const { media, loading: loadingMedia} = useWebsiteMedia();
 
   return (
     <>
@@ -69,59 +69,55 @@ export default function Home() {
       </Helmet>
 
       <main className="w-full">
-        {/* Homepage hero: use uploaded media when available */}
-        <HeroCinematic
-          heroMedia={media['home/hero']}
-        />
+  {!loadingMedia && (
+    <>
+      <HeroCinematic
+        heroMedia={media['home/hero']}
+      />
 
+      {media['home/intro']?.mediaUrl && (
         <EditorialSplit
           heading={homeData.intro.heading}
           subheading={homeData.intro.subheading}
           body={homeData.intro.body}
-          imageSrc={
-            media['home/intro']?.mediaUrl ||
-            homeData.intro.image
-          }
+          imageSrc={media['home/intro'].mediaUrl}
           imageAlt={
             media['home/intro']?.altText ||
             'Students in an Indian school learning'
           }
           reverse={false}
         />
+      )}
 
-        <FeatureGrid
-          title="A Glimpse of Our School"
-          features={homeData.glimpse.map((feature, index) => ({
-            ...feature,
-            image:
-              media[`home/glimpse-${index + 1}`]?.mediaUrl ||
-              feature.image,
-          }))}
-        />
+      <FeatureGrid
+        title="A Glimpse of Our School"
+        features={homeData.glimpse.map((feature, index) => ({
+          ...feature,
+          image: media[`home/glimpse-${index + 1}`]?.mediaUrl || '',
+        }))}
+      />
 
-        <QuoteSection
-          quote={homeData.quote.text}
-          author={homeData.quote.author}
-        />
+      <QuoteSection
+        quote={homeData.quote.text}
+        author={homeData.quote.author}
+      />
 
-        <VisionMission
-          vision={homeData.visionMission.vision}
-          mission={homeData.visionMission.mission}
-        />
+      <VisionMission
+        vision={homeData.visionMission.vision}
+        mission={homeData.visionMission.mission}
+      />
 
-        <WhyOurSchool
-          features={homeData.whyOurSchool.map((feature, index) => ({
-            ...feature,
-            image:
-              media[`home/why-${index + 1}`]?.mediaUrl ||
-              feature.image,
-          }))}
-        />
+      <WhyOurSchool
+        features={homeData.whyOurSchool.map((feature, index) => ({
+          ...feature,
+          image: media[`home/why-${index + 1}`]?.mediaUrl || '',
+        }))}
+      />
 
-        <Timeline
-          events={homeData.journey}
-        />
-      </main>
+      <Timeline events={homeData.journey} />
+    </>
+  )}
+</main>
     </>
   )
 }
