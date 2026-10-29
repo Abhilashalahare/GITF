@@ -1,19 +1,27 @@
-
 import GalleryItem from '../models/GalleryItem.js';
-import cloudinary from '../config/cloudinary.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-/*
- * Helper: delete uploaded files from Cloudinary.
- */
-const cleanupCloudinaryFiles = async (files = []) => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Absolute path to backend/uploads/gallery
+const uploadDir = path.resolve(__dirname, '../uploads/gallery');
+
+// Safely remove files uploaded in a failed request
+const cleanupLocalFiles = async (files = []) => {
   await Promise.allSettled(
-    files
-      .filter((file) => file.public_id)
-      .map((file) =>
-        cloudinary.uploader.destroy(file.public_id, {
-          resource_type: file.resource_type || 'image',
-        })
-      )
+    files.map(async (file) => {
+      if (file.filename) {
+        const filePath = path.resolve(uploadDir, file.filename);
+
+        // Ensure the file is inside the gallery upload directory
+        if (path.dirname(filePath) === uploadDir) {
+          await fs.unlink(filePath);
+        }
+      }
+    })
   );
 };
 
@@ -33,7 +41,7 @@ export const uploadGalleryItem = async (req, res) => {
     }
 
     if (files.length > 10) {
-      await cleanupCloudinaryFiles(files);
+      await cleanupLocalFiles(files);
 
       return res.status(400).json({
         success: false,
@@ -49,7 +57,7 @@ export const uploadGalleryItem = async (req, res) => {
       !year?.trim() ||
       !category?.trim()
     ) {
-      await cleanupCloudinaryFiles(files);
+      await cleanupLocalFiles(files);
 
       return res.status(400).json({
         success: false,
@@ -60,7 +68,7 @@ export const uploadGalleryItem = async (req, res) => {
     const allowedSchools = ['Sector 6', 'Sector 11'];
 
     if (!allowedSchools.includes(school)) {
-      await cleanupCloudinaryFiles(files);
+      await cleanupLocalFiles(files);
 
       return res.status(400).json({
         success: false,
@@ -69,7 +77,7 @@ export const uploadGalleryItem = async (req, res) => {
     }
 
     if (!/^\d{4}$/.test(year.trim())) {
-      await cleanupCloudinaryFiles(files);
+      await cleanupLocalFiles(files);
 
       return res.status(400).json({
         success: false,
@@ -77,24 +85,20 @@ export const uploadGalleryItem = async (req, res) => {
       });
     }
 
-    // Create one database document for each uploaded file.
     const documents = files.map((file) => {
-      const isVideo =
-        file.resource_type === 'video' ||
-        file.mimetype?.startsWith('video/');
+      const isVideo = file.mimetype?.startsWith('video/');
 
       return {
         title: title.trim(),
         school,
         year: year.trim(),
         category: category.trim(),
-        mediaUrl: file.path,
-        publicId: file.public_id || file.filename,
+        mediaUrl: `/uploads/gallery/${file.filename}`,
+        filename: file.filename,
         mediaType: isVideo ? 'video' : 'image',
       };
     });
 
-    // Save all uploaded media to MongoDB.
     const savedItems = await GalleryItem.insertMany(documents);
 
     return res.status(201).json({
@@ -106,7 +110,7 @@ export const uploadGalleryItem = async (req, res) => {
   } catch (error) {
     console.error('Gallery Upload Error:', error);
 
-    await cleanupCloudinaryFiles(files);
+    await cleanupLocalFiles(files);
 
     return res.status(500).json({
       success: false,
@@ -156,23 +160,29 @@ export const deleteGalleryItem = async (req, res) => {
       });
     }
 
-    if (item.publicId) {
-      try {
-        await cloudinary.uploader.destroy(item.publicId, {
-          resource_type:
-            item.mediaType === 'video' ? 'video' : 'image',
-        });
-      } catch (cloudinaryError) {
-        console.error(
-          'Cloudinary Delete Error:',
-          cloudinaryError
-        );
+    // Use the stored filename rather than trusting a URL from MongoDB
+    if (item.filename) {
+      const filePath = path.resolve(uploadDir, item.filename);
 
-        return res.status(500).json({
+      // Prevent paths outside uploads/gallery
+      if (path.dirname(filePath) !== uploadDir) {
+        return res.status(400).json({
           success: false,
-          message:
-            'Could not delete media from Cloudinary. Gallery item was not removed.',
+          message: 'Invalid gallery filename.',
         });
+      }
+
+      try {
+        await fs.unlink(filePath);
+      } catch (fileError) {
+        if (fileError.code !== 'ENOENT') {
+          console.error('Local File Delete Error:', fileError);
+
+          return res.status(500).json({
+            success: false,
+            message: 'Could not delete the media file.',
+          });
+        }
       }
     }
 

@@ -1,43 +1,45 @@
 import multer from 'multer';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
-import cloudinary from '../config/cloudinary.js';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
-const storage = new CloudinaryStorage({
-  cloudinary,
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  params: {
-    folder: 'GITF-Gallery',
+// Save Gallery files in backend/uploads/gallery
+const uploadDir = path.resolve(__dirname, '../uploads/gallery');
 
-    allowed_formats: [
-      'jpg',
-      'jpeg',
-      'png',
-      'webp',
-      'mp4',
-      'mov',
-      'webm',
-    ],
+// Create the directory if it doesn't exist
+fs.mkdirSync(uploadDir, { recursive: true });
 
-    resource_type: 'auto',
+// Configure local disk storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+
+  filename: (req, file, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    const uniqueName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
+
+    cb(null, uniqueName);
   },
 });
 
-/*
- * Only allow image and video files.
- */
+// Supported image and video formats
+const allowedMimeTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+]);
+
+// Validate uploaded files
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/jpg',
-
-    'video/mp4',
-    'video/quicktime',
-    'video/webm',
-  ];
-
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  if (allowedMimeTypes.has(file.mimetype)) {
     cb(null, true);
   } else {
     cb(
@@ -49,19 +51,13 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-/*
- * Multer configuration
- */
+// Export middleware for Gallery uploads
 export const uploadMiddleware = multer({
   storage,
-
   fileFilter,
 
   limits: {
-    // Maximum size: 100 MB
-    fileSize: 100 * 1024 * 1024,
-
-    // Maximum number of files in one request
-    files: 10,
+    fileSize: 100 * 1024 * 1024, // 100 MB per file
+    files: 10, // Maximum 10 files per request
   },
 });

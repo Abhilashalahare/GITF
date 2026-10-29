@@ -31,19 +31,17 @@ const gallerySchema = new mongoose.Schema(
       maxlength: [100, 'Category cannot exceed 100 characters'],
     },
 
+    // Public URL path used by the frontend
     mediaUrl: {
       type: String,
       required: [true, 'Media URL is required'],
       trim: true,
     },
 
-    /*
-     * Cloudinary public_id is required when we want
-     * to delete/replace the file from Cloudinary later.
-     */
-    publicId: {
+    // Actual filename saved in uploads/gallery
+    filename: {
       type: String,
-      required: [true, 'Cloudinary public ID is required'],
+      required: [true, 'Filename is required'],
       trim: true,
     },
 
@@ -61,9 +59,7 @@ const gallerySchema = new mongoose.Schema(
   }
 );
 
-/*
- * Indexes for faster gallery queries.
- */
+// Indexes for faster gallery queries
 gallerySchema.index({ school: 1, year: -1 });
 gallerySchema.index({ category: 1 });
 gallerySchema.index({ createdAt: -1 });

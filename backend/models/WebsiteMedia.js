@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 
 const websiteMediaSchema = new mongoose.Schema(
@@ -37,15 +36,17 @@ const websiteMediaSchema = new mongoose.Schema(
       },
     },
 
+    // URL path used by the frontend
     mediaUrl: {
       type: String,
       required: [true, 'Media URL is required'],
       trim: true,
     },
 
-    publicId: {
+    // Actual filename saved in uploads/website-media
+    filename: {
       type: String,
-      required: [true, 'Cloudinary public ID is required'],
+      required: [true, 'Filename is required'],
       trim: true,
     },
 
@@ -75,7 +76,7 @@ const websiteMediaSchema = new mongoose.Schema(
   }
 );
 
-// Quickly retrieve media by website section.
+// Quickly retrieve media by website section
 websiteMediaSchema.index({ section: 1, isActive: 1 });
 
 const WebsiteMedia = mongoose.model(

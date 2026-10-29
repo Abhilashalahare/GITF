@@ -10,10 +10,16 @@ import authRoutes from './routes/authRoutes.js';
 import { connectDB } from './config/db.js';
 import websiteMediaRoutes from './routes/websiteMediaRoutes.js';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 // Load environment variables
 dotenv.config();
 
 const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /*
  * --------------------------------------------------
@@ -103,6 +109,8 @@ app.use(cookieParser());
  * ROUTES
  * --------------------------------------------------
  */
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/contact', contactRoutes);
 

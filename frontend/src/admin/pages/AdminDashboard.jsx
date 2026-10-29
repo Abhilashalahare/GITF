@@ -11,16 +11,7 @@ import { Link } from 'react-router-dom';
 
 export default function AdminDashboard() {
   const stats = [
-    {
-      title: 'Total Photos',
-      value: '—',
-      icon: LuImages,
-    },
-    {
-      title: 'Total Videos',
-      value: '—',
-      icon: LuVideo,
-    },
+   
     {
       title: 'Schools',
       value: '2',

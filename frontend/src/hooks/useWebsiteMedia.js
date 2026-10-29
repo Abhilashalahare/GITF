@@ -1,9 +1,28 @@
-
 import { useEffect, useState } from 'react';
 
-const API_URL = `${
+const BACKEND_URL = (
   import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
-}/api/website-media`;
+).replace(/\/+$/, '');
+
+const API_URL = `${BACKEND_URL}/api/website-media`;
+
+// Convert local upload paths into absolute backend URLs.
+// Existing absolute URLs, including Cloudinary URLs, remain unchanged.
+const resolveMediaUrl = (mediaUrl) => {
+  if (!mediaUrl || typeof mediaUrl !== 'string') {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(mediaUrl)) {
+    return mediaUrl;
+  }
+
+  if (mediaUrl.startsWith('/')) {
+    return `${BACKEND_URL}${mediaUrl}`;
+  }
+
+  return `${BACKEND_URL}/${mediaUrl}`;
+};
 
 export default function useWebsiteMedia() {
   const [media, setMedia] = useState({});
@@ -15,13 +34,15 @@ export default function useWebsiteMedia() {
     async function fetchMedia() {
       try {
         const response = await fetch(API_URL);
-        const result = await response.json();
 
         if (!response.ok) {
-          throw new Error('Failed to fetch website media');
+          throw new Error(
+            `Failed to fetch website media: ${response.status}`
+          );
         }
 
-        // Your API returns the array in result.data.
+        const result = await response.json();
+
         const items = Array.isArray(result.data)
           ? result.data
           : [];
@@ -30,7 +51,10 @@ export default function useWebsiteMedia() {
 
         items.forEach((item) => {
           if (item.isActive && item.key) {
-            mediaMap[item.key] = item;
+            mediaMap[item.key] = {
+              ...item,
+              mediaUrl: resolveMediaUrl(item.mediaUrl),
+            };
           }
         });
 

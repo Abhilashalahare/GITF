@@ -149,6 +149,19 @@ export default function Gallery() {
     );
   });
 
+  const BACKEND_URL = (
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"
+  ).replace(/\/+$/, "");
+
+  const getMediaUrl = (url) => {
+    if (!url) return "";
+
+    // If the URL is already absolute, use it directly
+    if (/^https?:\/\//i.test(url)) return url;
+
+    // Convert a relative backend path into a complete URL
+    return `${BACKEND_URL}/${url.replace(/^\/+/, "")}`;
+  };
   // ---------------------------------------------------------
   // RENDER
   // ---------------------------------------------------------
@@ -186,11 +199,10 @@ export default function Gallery() {
               setActiveSchool('Sector 6');
               setActiveCategory('All');
             }}
-            className={`px-10 py-3 text-sm font-bold uppercase tracking-widest transition-all duration-300 ${
-              activeSchool === 'Sector 6'
-                ? 'bg-[#7E5CAD] text-brand-white shadow-md'
-                : 'text-[#7E5CAD] hover:bg-[#7E5CAD]/10'
-            }`}
+            className={`px-10 py-3 text-sm font-bold uppercase tracking-widest transition-all duration-300 ${activeSchool === 'Sector 6'
+              ? 'bg-[#7E5CAD] text-brand-white shadow-md'
+              : 'text-[#7E5CAD] hover:bg-[#7E5CAD]/10'
+              }`}
           >
             Sector 6
           </button>
@@ -200,11 +212,10 @@ export default function Gallery() {
               setActiveSchool('Sector 11');
               setActiveCategory('All');
             }}
-            className={`px-10 py-3 text-sm font-bold uppercase tracking-widest transition-all duration-300 ${
-              activeSchool === 'Sector 11'
-                ? 'bg-[#7E5CAD] text-brand-white shadow-md'
-                : 'text-[#7E5CAD] hover:bg-[#7E5CAD]/10'
-            }`}
+            className={`px-10 py-3 text-sm font-bold uppercase tracking-widest transition-all duration-300 ${activeSchool === 'Sector 11'
+              ? 'bg-[#7E5CAD] text-brand-white shadow-md'
+              : 'text-[#7E5CAD] hover:bg-[#7E5CAD]/10'
+              }`}
           >
             Sector 11
           </button>
@@ -233,11 +244,10 @@ export default function Gallery() {
 
             <button
               onClick={() => setActiveCategory('All')}
-              className={`px-6 py-3 text-xs uppercase tracking-widest font-bold transition-all duration-300 ${
-                activeCategory === 'All'
-                  ? 'bg-[#7E5CAD] text-brand-white shadow-md'
-                  : 'bg-brand-white text-brand-charcoal border border-[#7E5CAD]/20 hover:border-[#7E5CAD]'
-              }`}
+              className={`px-6 py-3 text-xs uppercase tracking-widest font-bold transition-all duration-300 ${activeCategory === 'All'
+                ? 'bg-[#7E5CAD] text-brand-white shadow-md'
+                : 'bg-brand-white text-brand-charcoal border border-[#7E5CAD]/20 hover:border-[#7E5CAD]'
+                }`}
             >
               All Albums
             </button>
@@ -248,11 +258,10 @@ export default function Gallery() {
                 onClick={() =>
                   setActiveCategory(category)
                 }
-                className={`px-6 py-3 text-xs uppercase tracking-widest font-bold transition-all duration-300 ${
-                  activeCategory === category
-                    ? 'bg-[#66BB6A] text-brand-white shadow-md'
-                    : 'bg-brand-white text-brand-charcoal border border-[#7E5CAD]/20 hover:border-[#66BB6A]'
-                }`}
+                className={`px-6 py-3 text-xs uppercase tracking-widest font-bold transition-all duration-300 ${activeCategory === category
+                  ? 'bg-[#66BB6A] text-brand-white shadow-md'
+                  : 'bg-brand-white text-brand-charcoal border border-[#7E5CAD]/20 hover:border-[#66BB6A]'
+                  }`}
               >
                 {category}
               </button>
@@ -290,11 +299,10 @@ export default function Gallery() {
                     setActiveYear(year);
                     setActiveCategory('All');
                   }}
-                  className={`font-condensed px-5 py-2 text-xl md:text-2xl transition-colors duration-300 ${
-                    activeYear === year
-                      ? 'bg-[#7E5CAD] text-brand-white'
-                      : 'bg-brand-white text-brand-charcoal/60 hover:text-brand-charcoal border border-[#7E5CAD]/20'
-                  }`}
+                  className={`font-condensed px-5 py-2 text-xl md:text-2xl transition-colors duration-300 ${activeYear === year
+                    ? 'bg-[#7E5CAD] text-brand-white'
+                    : 'bg-brand-white text-brand-charcoal/60 hover:text-brand-charcoal border border-[#7E5CAD]/20'
+                    }`}
                 >
                   {year}
                 </button>
@@ -313,11 +321,10 @@ export default function Gallery() {
 
             <button
               onClick={() => setActiveCategory('All')}
-              className={`px-4 py-1.5 text-xs uppercase tracking-widest transition-colors ${
-                activeCategory === 'All'
-                  ? 'bg-[#66BB6A] text-brand-white font-bold'
-                  : 'bg-brand-white/80 text-brand-charcoal hover:bg-brand-white'
-              }`}
+              className={`px-4 py-1.5 text-xs uppercase tracking-widest transition-colors ${activeCategory === 'All'
+                ? 'bg-[#66BB6A] text-brand-white font-bold'
+                : 'bg-brand-white/80 text-brand-charcoal hover:bg-brand-white'
+                }`}
             >
               All Events
             </button>
@@ -328,11 +335,10 @@ export default function Gallery() {
                 onClick={() =>
                   setActiveCategory(category)
                 }
-                className={`px-4 py-1.5 text-xs uppercase tracking-widest transition-colors ${
-                  activeCategory === category
-                    ? 'bg-[#66BB6A] text-brand-white font-bold'
-                    : 'bg-brand-white/80 text-brand-charcoal hover:bg-brand-white'
-                }`}
+                className={`px-4 py-1.5 text-xs uppercase tracking-widest transition-colors ${activeCategory === category
+                  ? 'bg-[#66BB6A] text-brand-white font-bold'
+                  : 'bg-brand-white/80 text-brand-charcoal hover:bg-brand-white'
+                  }`}
               >
                 {category}
               </button>
@@ -391,7 +397,7 @@ export default function Gallery() {
                       className="relative group overflow-hidden bg-[#7E5CAD] cursor-pointer break-inside-avoid shadow-md"
                       onClick={() =>
                         setSelectedImage({
-                          src: img.mediaUrl,
+                          src: getMediaUrl(img.mediaUrl),
                           alt: img.title,
                           year: img.year,
                           title: img.title,
@@ -399,9 +405,10 @@ export default function Gallery() {
                       }
                     >
 
+
                       <img
-                        src={img.mediaUrl}
-                        alt={img.title}
+                        src={getMediaUrl(img.mediaUrl)}
+                        alt={img.title || 'Gallery image'}
                         className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 ease-out"
                         loading="lazy"
                       />
@@ -488,11 +495,14 @@ export default function Gallery() {
                     </h3>
 
                     <video
-                      src={vid.mediaUrl}
+                      src={getMediaUrl(vid.mediaUrl)}
                       controls
+                      playsInline
                       preload="metadata"
                       className="w-full aspect-video object-cover mb-6"
-                    />
+                    >
+                    
+                    </video>
 
                     <p className="text-brand-white/70 text-sm leading-relaxed">
                       {vid.category}

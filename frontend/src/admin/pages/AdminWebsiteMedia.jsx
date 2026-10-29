@@ -1,9 +1,24 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const API_URL = `${
-  (import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000').replace(/\/$/, '')
-}/api/website-media`;
+const API_URL = `${(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000').replace(/\/$/, '')
+  }/api/website-media`;
+
+const BACKEND_URL = (
+  import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+).replace(/\/+$/, '');
+
+const getMediaUrl = (mediaUrl) => {
+  if (!mediaUrl) return '';
+
+  // Keep external URLs, such as Cloudinary URLs, unchanged.
+  if (/^https?:\/\//i.test(mediaUrl)) {
+    return mediaUrl;
+  }
+
+  // Load local images from the backend.
+  return `${BACKEND_URL}/${mediaUrl.replace(/^\/+/, '')}`;
+};
 
 const sections = [
   { value: 'home', label: 'Home' },
@@ -22,7 +37,7 @@ const initialForm = {
   altText: '',
 };
 
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 100 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
 const ALLOWED_TYPES = [
@@ -51,8 +66,8 @@ async function readResponse(response) {
   if (!response.ok || data.success === false) {
     throw new Error(
       data.message ||
-        data.error ||
-        `Request failed (HTTP ${response.status}).`
+      data.error ||
+      `Request failed (HTTP ${response.status}).`
     );
   }
 
@@ -133,7 +148,7 @@ export default function AdminWebsiteMedia() {
       setError(
         isVideo
           ? 'Video must be 100 MB or smaller.'
-          : 'Image must be 10 MB or smaller.'
+          : 'Image must be 100 MB or smaller.'
       );
 
       setFile(null);
@@ -179,18 +194,23 @@ export default function AdminWebsiteMedia() {
       setError(
         isVideo
           ? 'Video must be 100 MB or smaller.'
-          : 'Image must be 10 MB or smaller.'
+          : 'Image must be 100 MB or smaller.'
       );
       return;
     }
 
     const formData = new FormData();
 
-    formData.append('file', file);
+    // Append text fields BEFORE the file.
+    // Multer needs the key before it chooses the upload directory.
     formData.append('name', name);
     formData.append('key', key);
+    formData.append('placementKey', key);
     formData.append('section', form.section);
     formData.append('altText', form.altText.trim());
+
+    // Append the file LAST.
+    formData.append('file', file);
 
     setLoading(true);
 
@@ -317,10 +337,10 @@ export default function AdminWebsiteMedia() {
             {(error.toLowerCase().includes('login') ||
               error.toLowerCase().includes('authorized') ||
               error.toLowerCase().includes('unauthorized')) && (
-              <p className="mt-2">
-                Your session may have expired. Please log in again.
-              </p>
-            )}
+                <p className="mt-2">
+                  Your session may have expired. Please log in again.
+                </p>
+              )}
           </div>
         )}
 
@@ -449,7 +469,7 @@ export default function AdminWebsiteMedia() {
               />
 
               <p className="mt-1 text-xs text-gray-500">
-                JPG, PNG, WebP or MP4. Maximum image size: 10 MB; video
+                JPG, PNG, WebP or MP4. Maximum image size: 100 MB; video
                 size: 100 MB.
               </p>
             </div>
@@ -518,15 +538,15 @@ export default function AdminWebsiteMedia() {
                   <div className="aspect-video bg-gray-100">
                     {item.mediaType === 'video' ? (
                       <video
-                        src={item.mediaUrl}
+                        src={getMediaUrl(item.mediaUrl)}
                         controls
                         preload="metadata"
                         className="h-full w-full object-contain"
                       />
                     ) : (
                       <img
-                        src={item.mediaUrl}
-                        alt={item.altText || item.name}
+                        src={getMediaUrl(item.mediaUrl)}
+                        alt={item.altText || item.name || 'Uploaded media'}
                         loading="lazy"
                         className="h-full w-full object-cover"
                       />
@@ -546,11 +566,10 @@ export default function AdminWebsiteMedia() {
                       </div>
 
                       <span
-                        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-                          item.isActive
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${item.isActive
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-600'
+                          }`}
                       >
                         {item.isActive ? 'Active' : 'Inactive'}
                       </span>

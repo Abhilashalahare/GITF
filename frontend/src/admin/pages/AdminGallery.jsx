@@ -11,7 +11,21 @@ import {
   LuUpload,
 } from 'react-icons/lu';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL;
+const API_URL = (
+  import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+).replace(/\/+$/, '');
+
+const getMediaUrl = (mediaUrl) => {
+  if (!mediaUrl) return '';
+
+  // Keep external URLs, such as older Cloudinary URLs, unchanged.
+  if (/^https?:\/\//i.test(mediaUrl)) {
+    return mediaUrl;
+  }
+
+  // Resolve local uploads against the backend server.
+  return `${API_URL}/${mediaUrl.replace(/^\/+/, '')}`;
+};
 
 const schools = ['Sector 6', 'Sector 11'];
 
@@ -381,18 +395,23 @@ export default function AdminGallery() {
 
                     {/* MEDIA */}
                     <div className="aspect-[4/3] bg-gray-100 relative">
-
                       {item.mediaType === 'video' ? (
                         <video
-                          src={item.mediaUrl}
+                          src={getMediaUrl(item.mediaUrl)}
                           controls
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <img
-                          src={item.mediaUrl}
-                          alt={item.title}
+                          src={getMediaUrl(item.mediaUrl)}
+                          alt={item.title || 'Gallery image'}
                           className="w-full h-full object-cover"
+                          onError={(event) => {
+                            console.error(
+                              'Admin Gallery image failed to load:',
+                              event.currentTarget.src
+                            );
+                          }}
                         />
                       )}
 
@@ -406,7 +425,6 @@ export default function AdminGallery() {
 
                         {item.mediaType}
                       </div>
-
                     </div>
 
                     {/* INFO */}

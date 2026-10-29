@@ -12,7 +12,7 @@ const createFirstAdmin = async () => {
     await connectDB();
 
     const adminEmail = 'a@gmail.com';
-    const adminPassword = '12345678'; // Change this to whatever you want
+    const adminPassword = '12345678'; 
 
     // 2. Check if an admin already exists so we don't accidentally make duplicates
     const adminExists = await AdminUser.findOne({ email: adminEmail });
@@ -37,5 +37,5 @@ const createFirstAdmin = async () => {
   }
 };
 
-// Run the function
+
 createFirstAdmin();
