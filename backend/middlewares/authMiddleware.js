@@ -54,6 +54,10 @@ export const protectAdmin = async (req, res, next) => {
 
     return next();
   } catch (error) {
+    console.error("JWT verification failed:", {
+      name: error.name,
+      message: error.message,
+    });
     if (
       error.name === "TokenExpiredError" ||
       error.name === "JsonWebTokenError" ||
