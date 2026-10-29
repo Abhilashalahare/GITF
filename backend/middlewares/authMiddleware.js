@@ -1,79 +1,64 @@
-import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
-import AdminUser from "../models/AdminUser.js";
+import jwt from 'jsonwebtoken';
+import AdminUser from '../models/AdminUser.js';
 
 export const protectAdmin = async (req, res, next) => {
-  res.set("Cache-Control", "no-store");
-
   try {
+    // Get JWT from HTTP-only cookie
     const token = req.cookies?.adminToken;
 
+    // No token
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required. Please log in.",
+        message: 'Not authorized. Please login.',
       });
     }
 
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is not configured");
+    // Verify JWT
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-      return res.status(500).json({
-        success: false,
-        message: "Authentication service is unavailable.",
-      });
-    }
+    // Find admin
+    const admin = await AdminUser.findById(decoded.id).select(
+      '-password'
+    );
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ["HS256"],
-      issuer: "bivv-admin",
-      audience: "bivv-admin-panel",
-    });
-
-    if (
-      typeof decoded === "string" ||
-      typeof decoded.id !== "string" ||
-      !mongoose.isValidObjectId(decoded.id)
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid authentication token.",
-      });
-    }
-
-    const admin = await AdminUser.findById(decoded.id).select("_id email");
-
+    // Admin no longer exists
     if (!admin) {
       return res.status(401).json({
         success: false,
-        message: "Admin account no longer exists. Please log in again.",
+        message: 'Admin account no longer exists.',
       });
     }
 
+    // Attach admin to request
     req.admin = admin;
 
-    return next();
+    next();
   } catch (error) {
-    console.error("JWT verification failed:", {
-      name: error.name,
-      message: error.message,
-    });
-    if (
-      error.name === "TokenExpiredError" ||
-      error.name === "JsonWebTokenError" ||
-      error.name === "NotBeforeError"
-    ) {
+    console.error('Admin Authentication Error:', error.message);
+
+    // JWT expired
+    if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
-        message: "Your session is invalid or expired. Please log in again.",
+        message: 'Session expired. Please login again.',
       });
     }
 
-    console.error("Admin Authentication Error:", error);
+    // Invalid/tampered JWT
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid authentication token.',
+      });
+    }
 
     return res.status(500).json({
       success: false,
-      message: "Authentication failed.",
+      message: 'Authentication failed.',
     });
   }
 };
