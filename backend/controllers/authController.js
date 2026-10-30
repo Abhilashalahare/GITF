@@ -1,26 +1,6 @@
 import AdminUser from '../models/AdminUser.js';
 import jwt from 'jsonwebtoken';
 
-/**
- * Generate JWT
- */
-const generateToken = (id) => {
-  if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET is not configured');
-  }
-
-  return jwt.sign(
-    { id: id.toString() },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: '1d',
-    }
-  );
-};
-
-/**
- * Cookie options
- */
 const cookieOptions = {
   httpOnly: true,
   secure: true,
@@ -29,14 +9,22 @@ const cookieOptions = {
   path: '/',
 };
 
-/**
- * POST /api/auth/login
- */
+const generateToken = (id) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+
+  return jwt.sign(
+    { id: id.toString() },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' }
+  );
+};
+
 export const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -44,18 +32,10 @@ export const loginAdmin = async (req, res) => {
       });
     }
 
-    // Normalize email
-    const normalizedEmail = email.trim().toLowerCase();
-
-    /*
-     * Password has select:false in AdminUser.js,
-     * therefore we explicitly select it here.
-     */
     const admin = await AdminUser.findOne({
-      email: normalizedEmail,
+      email: email.trim().toLowerCase(),
     }).select('+password');
 
-    // Don't reveal whether email exists
     if (!admin || !(await admin.matchPassword(password))) {
       return res.status(401).json({
         success: false,
@@ -63,10 +43,8 @@ export const loginAdmin = async (req, res) => {
       });
     }
 
-    // Generate JWT
     const token = generateToken(admin._id);
 
-    // Store JWT in HTTP-only cookie
     res.cookie('adminToken', token, cookieOptions);
 
     return res.status(200).json({
@@ -87,18 +65,16 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
-/**
- * POST /api/auth/logout
- */
 export const logoutAdmin = async (req, res) => {
   try {
+    // Prevent caching of the logout response.
+    res.set('Cache-Control', 'no-store');
+
+    // Clear the cookie using the same attributes as login.
     res.clearCookie('adminToken', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite:
-        process.env.NODE_ENV === 'production'
-          ? 'none'
-          : 'lax',
+      secure: true,
+      sameSite: 'none',
       path: '/',
     });
 
@@ -111,28 +87,17 @@ export const logoutAdmin = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: 'Something went wrong during logout',
+      message: 'Logout failed',
     });
   }
 };
 
-// controllers/authController.js
-
 export const getCurrentAdmin = async (req, res) => {
-  try {
-    return res.status(200).json({
-      success: true,
-      admin: {
-        id: req.admin._id,
-        email: req.admin.email,
-      },
-    });
-  } catch (error) {
-    console.error('Get Current Admin Error:', error);
-
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to get admin information.',
-    });
-  }
+  return res.status(200).json({
+    success: true,
+    admin: {
+      id: req.admin._id,
+      email: req.admin.email,
+    },
+  });
 };

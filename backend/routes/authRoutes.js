@@ -13,6 +13,19 @@ const router = express.Router();
 
 router.post('/login', loginAdmin);
 router.post('/logout', logoutAdmin);
-router.get('/me', protectAdmin, getCurrentAdmin);
+router.get(
+  '/me',
+  (req, res, next) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    });
+
+    next();
+  },
+  protectAdmin,
+  getCurrentAdmin
+);
 
 export default router;

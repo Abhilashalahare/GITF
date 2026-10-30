@@ -12,21 +12,36 @@ import {
 export default function AdminSidebar() {
   const navigate = useNavigate();
 
+
 const handleLogout = async () => {
   try {
-    await fetch(
+    const response = await fetch(
       `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,
       {
         method: 'POST',
         credentials: 'include',
       }
     );
+
+    if (!response.ok) {
+      throw new Error('Logout request failed');
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || 'Logout failed');
+    }
+
+    localStorage.removeItem('adminEmail');
+
+    window.location.replace('/admin/login');
   } catch (error) {
     console.error('Logout failed:', error);
-  } finally {
-    window.location.replace('/admin/login');
+    alert('Logout failed. Please try again.');
   }
 };
+
 
   const navItems = [
     {

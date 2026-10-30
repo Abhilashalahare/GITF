@@ -33,7 +33,7 @@ export default function About() {
           heading="Our School"
           subheading="A pathway to learning, hope and possibility."
           body={aboutData.intro.body}
-          imageSrc={media['about/intro-1'].mediaUrl}
+          imageSrc={media['about/intro-1'].mediaUrl }
           imageAlt={media['about/intro-1']?.altText || 'School building'}
           reverse={false}
         />
