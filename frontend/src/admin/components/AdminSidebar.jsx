@@ -1,6 +1,7 @@
+
 // src/admin/components/AdminSidebar.jsx
 
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   LuLayoutDashboard,
   LuImages,
@@ -10,38 +11,33 @@ import {
 } from 'react-icons/lu';
 
 export default function AdminSidebar() {
-  const navigate = useNavigate();
+  const handleLogout = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
 
-
-const handleLogout = async () => {
-  try {
-    const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,
-      {
-        method: 'POST',
-        credentials: 'include',
+      if (!response.ok) {
+        throw new Error('Logout request failed');
       }
-    );
 
-    if (!response.ok) {
-      throw new Error('Logout request failed');
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || 'Logout failed');
+      }
+
+      localStorage.removeItem('adminEmail');
+      window.location.replace('/admin/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      alert('Logout failed. Please try again.');
     }
-
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || 'Logout failed');
-    }
-
-    localStorage.removeItem('adminEmail');
-
-    window.location.replace('/admin/login');
-  } catch (error) {
-    console.error('Logout failed:', error);
-    alert('Logout failed. Please try again.');
-  }
-};
-
+  };
 
   const navItems = [
     {
@@ -62,19 +58,16 @@ const handleLogout = async () => {
   ];
 
   return (
-    <aside className="hidden lg:flex w-72 min-h-screen bg-[#7E5CAD] text-white flex-col sticky top-0">
-
+    <aside className="hidden lg:flex fixed left-0 top-0 z-50 h-screen w-72 flex-col overflow-hidden bg-[#7E5CAD] text-white">
       {/* Brand */}
-      <div className="px-8 py-8 border-b border-white/15">
+      <div className="shrink-0 border-b border-white/15 px-8 py-8">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-[#66BB6A] flex items-center justify-center">
+          <div className="flex h-11 w-11 items-center justify-center bg-[#66BB6A]">
             <LuSchool size={22} />
           </div>
 
           <div>
-            <h1 className="font-serif text-xl">
-              GITF
-            </h1>
+            <h1 className="font-serif text-xl">GITF</h1>
 
             <p className="text-[10px] uppercase tracking-[0.18em] text-white/60">
               Admin Portal
@@ -84,46 +77,45 @@ const handleLogout = async () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-8 space-y-2">
-
-        <p className="px-4 mb-4 text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold">
+      <nav className="flex-1 overflow-y-auto px-4 py-8">
+        <p className="mb-4 px-4 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
           Management
         </p>
 
-        {navItems.map((item) => {
-          const Icon = item.icon;
+        <div className="space-y-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
 
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-4 px-4 py-3.5 text-sm transition-colors ${
-                  isActive
-                    ? 'bg-white text-[#7E5CAD] font-bold'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                }`
-              }
-            >
-              <Icon size={19} />
-              <span>{item.label}</span>
-            </NavLink>
-          );
-        })}
-
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center gap-4 px-4 py-3.5 text-sm transition-colors ${
+                    isActive
+                      ? 'bg-white font-bold text-[#7E5CAD]'
+                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                  }`
+                }
+              >
+                <Icon size={19} />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </div>
       </nav>
 
-      {/* Bottom */}
-      <div className="p-4 border-t border-white/15">
+      {/* Logout - fixed at the bottom of the sidebar */}
+      <div className="mt-auto shrink-0 border-t border-white/15 p-4">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-4 px-4 py-3.5 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          className="flex w-full items-center gap-4 px-4 py-3.5 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white"
         >
           <LuLogOut size={19} />
           Logout
         </button>
       </div>
-
     </aside>
   );
 }

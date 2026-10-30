@@ -2,14 +2,11 @@ import { motion } from 'framer-motion';
 import { FaWhatsapp } from 'react-icons/fa';
 
 export default function FloatingWhatsApp() {
-  // Replace this with the school's actual WhatsApp Business number (include country code, omit + or spaces)
-  // Example: 91 for India, followed by the 10 digit number
-  const phoneNumber = "9301402595"; 
+
+  const phoneNumber = import.meta.env.VITE_PHONE_NUMBER;
   
-  // The pre-filled message the user will send to you
   const preFilledMessage = "Hi BIVV, I would like to know more about admissions and programs.";
   
-  // URL encode the message so it works in a web link
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(preFilledMessage)}`;
 
   return (

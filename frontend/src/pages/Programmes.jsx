@@ -25,14 +25,10 @@ export default function Programmes() {
         colorClass="bg-[#7E5CAD] text-brand-white"
       />
 
-      {/* Render each programme with admin-managed images */}
       {!loadingMedia &&
         programmesData.items.map((item, index) => {
           const placementKey = `programmes/${index + 1}`;
           const uploadedMedia = media?.[placementKey];
-
-          // Skip items without an uploaded image.
-          if (!uploadedMedia?.mediaUrl) return null;
 
           return (
             <EditorialSplit
@@ -40,8 +36,8 @@ export default function Programmes() {
               heading={item.heading}
               subheading={item.subheading}
               body={item.body}
-              imageSrc={uploadedMedia.mediaUrl}
-              imageAlt={uploadedMedia.altText || item.heading}
+              imageSrc={uploadedMedia?.mediaUrl || null}
+              imageAlt={uploadedMedia?.altText || item.heading}
               reverse={index % 2 !== 0}
             />
           );

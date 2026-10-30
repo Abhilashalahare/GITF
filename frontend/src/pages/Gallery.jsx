@@ -8,6 +8,8 @@ import PageHero from '../components/sections/PageHero';
 
 import Lightbox from '../components/ui/Lightbox';
 
+import Pagination from '../components/ui/Pagination';
+
 import { galleryData } from '../data/gallery';
 
 import { LuVideo, LuImage } from 'react-icons/lu';
@@ -18,6 +20,19 @@ export default function Gallery() {
   // ---------------------------------------------------------
   // STATE
   // ---------------------------------------------------------
+  const PAGE_SIZE = 9;
+
+  const [photoPage, setPhotoPage] = useState(1);
+  const [videoPage, setVideoPage] = useState(1);
+
+  const [photoItems, setPhotoItems] = useState([]);
+  const [videoItems, setVideoItems] = useState([]);
+
+  const [photoPagination, setPhotoPagination] = useState({});
+  const [videoPagination, setVideoPagination] = useState({});
+
+  const [availableYears, setAvailableYears] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
 
   const [activeSchool, setActiveSchool] = useState('Sector 6');
 
@@ -26,8 +41,6 @@ export default function Gallery() {
   const [activeCategory, setActiveCategory] = useState('All');
 
   const [selectedImage, setSelectedImage] = useState(null);
-
-  const [galleryItems, setGalleryItems] = useState([]);
 
   const [loadingGallery, setLoadingGallery] = useState(true);
 
@@ -38,116 +51,126 @@ export default function Gallery() {
   // ---------------------------------------------------------
 
   useEffect(() => {
-    const fetchGallery = async () => {
-      try {
-        setLoadingGallery(true);
-        setGalleryError('');
+    const controller = new AbortController();
 
-        const response = await fetch(`${API_URL}/api/gallery`);
+    const fetchMedia = async (mediaType, page) => {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+        school: activeSchool,
+        mediaType,
+      });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || 'Failed to load gallery.'
-          );
+      if (mediaType === 'image') {
+        if (activeYear) {
+          params.set('year', activeYear);
         }
 
-        setGalleryItems(data.items || []);
-      } catch (error) {
-        console.error('Public Gallery Error:', error);
+        params.set('category', activeCategory);
+      }
 
-        setGalleryError(
-          error.message || 'Failed to load gallery.'
-        );
+      const response = await fetch(
+        `${API_URL}/api/gallery?${params.toString()}`,
+        {
+          signal: controller.signal,
+          cache: 'no-store',
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to load gallery.');
+      }
+
+      return data;
+    };
+
+    const fetchGallery = async () => {
+      setLoadingGallery(true);
+      setGalleryError('');
+
+      try {
+        const [photos, videos] = await Promise.all([
+          fetchMedia('image', photoPage),
+          fetchMedia('video', videoPage),
+        ]);
+
+        setPhotoItems(photos.items || []);
+        setVideoItems(videos.items || []);
+
+        setPhotoPagination(photos.pagination || {});
+        setVideoPagination(videos.pagination || {});
+
+        setAvailableYears(photos.filters?.years || []);
+        setAvailableCategories(photos.filters?.categories || []);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Public Gallery Error:', error);
+
+          setGalleryError(
+            error.message || 'Failed to load gallery.'
+          );
+        }
       } finally {
-        setLoadingGallery(false);
+        if (!controller.signal.aborted) {
+          setLoadingGallery(false);
+        }
       }
     };
 
     fetchGallery();
-  }, []);
+
+    return () => controller.abort();
+  }, [
+    activeSchool,
+    activeYear,
+    activeCategory,
+    photoPage,
+    videoPage,
+  ]);
 
   // ---------------------------------------------------------
   // AVAILABLE YEARS FROM DATABASE
   // ---------------------------------------------------------
 
-  const availableYears = [
-    ...new Set(
-      galleryItems
-        .filter((item) => item.school === activeSchool)
-        .map((item) => item.year)
-    ),
-  ].sort((a, b) => Number(b) - Number(a));
 
   // ---------------------------------------------------------
   // SET DEFAULT YEAR
   // ---------------------------------------------------------
 
   useEffect(() => {
-    if (availableYears.length > 0) {
-      setActiveYear((currentYear) =>
-        availableYears.includes(currentYear)
-          ? currentYear
-          : availableYears[0]
-      );
-    } else {
-      setActiveYear('');
+    if (availableYears.length === 0) {
+      if (activeYear !== '') {
+        setActiveYear('');
+      }
+      return;
     }
 
-    setActiveCategory('All');
-  }, [activeSchool, galleryItems]);
+    if (!availableYears.includes(activeYear)) {
+      setActiveYear(availableYears[0]);
+      setActiveCategory('All');
+      setPhotoPage(1);
+    }
+  }, [availableYears, activeYear]);
 
   // ---------------------------------------------------------
   // AVAILABLE CATEGORIES
   // ---------------------------------------------------------
 
-  const availableCategories = [
-    ...new Set(
-      galleryItems
-        .filter(
-          (item) =>
-            item.school === activeSchool &&
-            item.year === activeYear &&
-            item.mediaType === 'image'
-        )
-        .map((item) => item.category)
-    ),
-  ];
+
 
   // ---------------------------------------------------------
   // FILTER IMAGES
   // ---------------------------------------------------------
 
-  const filteredImages = galleryItems.filter((item) => {
-    const matchSchool = item.school === activeSchool;
-
-    const matchType = item.mediaType === 'image';
-
-    const matchYear = item.year === activeYear;
-
-    const matchCategory =
-      activeCategory === 'All' ||
-      item.category === activeCategory;
-
-    return (
-      matchSchool &&
-      matchType &&
-      matchYear &&
-      matchCategory
-    );
-  });
+  const filteredImages = photoItems;
 
   // ---------------------------------------------------------
   // FILTER VIDEOS
   // ---------------------------------------------------------
 
-  const filteredVideos = galleryItems.filter((item) => {
-    return (
-      item.school === activeSchool &&
-      item.mediaType === 'video'
-    );
-  });
+  const filteredVideos = videoItems;
 
   const BACKEND_URL = (
     import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"
@@ -198,6 +221,8 @@ export default function Gallery() {
             onClick={() => {
               setActiveSchool('Sector 6');
               setActiveCategory('All');
+              setPhotoPage(1);
+              setVideoPage(1);
             }}
             className={`px-10 py-3 text-sm font-bold uppercase tracking-widest transition-all duration-300 ${activeSchool === 'Sector 6'
               ? 'bg-[#7E5CAD] text-brand-white shadow-md'
@@ -211,6 +236,8 @@ export default function Gallery() {
             onClick={() => {
               setActiveSchool('Sector 11');
               setActiveCategory('All');
+              setPhotoPage(1);
+              setVideoPage(1);
             }}
             className={`px-10 py-3 text-sm font-bold uppercase tracking-widest transition-all duration-300 ${activeSchool === 'Sector 11'
               ? 'bg-[#7E5CAD] text-brand-white shadow-md'
@@ -243,11 +270,16 @@ export default function Gallery() {
           <div className="flex flex-wrap justify-center gap-3">
 
             <button
-              onClick={() => setActiveCategory('All')}
+              onClick={() => {
+                setActiveYear(year);
+                setActiveCategory('All');
+                setPhotoPage(1);
+              }}
               className={`px-6 py-3 text-xs uppercase tracking-widest font-bold transition-all duration-300 ${activeCategory === 'All'
                 ? 'bg-[#7E5CAD] text-brand-white shadow-md'
                 : 'bg-brand-white text-brand-charcoal border border-[#7E5CAD]/20 hover:border-[#7E5CAD]'
                 }`}
+
             >
               All Albums
             </button>
@@ -255,9 +287,10 @@ export default function Gallery() {
             {availableCategories.map((category) => (
               <button
                 key={category}
-                onClick={() =>
+                onClick={() => {
                   setActiveCategory(category)
-                }
+                  setPhotoPage(1)
+                }}
                 className={`px-6 py-3 text-xs uppercase tracking-widest font-bold transition-all duration-300 ${activeCategory === category
                   ? 'bg-[#66BB6A] text-brand-white shadow-md'
                   : 'bg-brand-white text-brand-charcoal border border-[#7E5CAD]/20 hover:border-[#66BB6A]'
@@ -287,6 +320,7 @@ export default function Gallery() {
                 Photo Gallery - {activeSchool}
               </h2>
             </div>
+
 
             {/* Academic Years */}
 
@@ -430,7 +464,15 @@ export default function Gallery() {
 
                 </AnimatePresence>
               </motion.div>
+
             )}
+          {!loadingGallery && !galleryError && (
+            <Pagination
+              currentPage={photoPagination.currentPage || 1}
+              totalPages={photoPagination.totalPages || 0}
+              onPageChange={setPhotoPage}
+            />
+          )}
 
           {/* Empty */}
 
@@ -501,7 +543,7 @@ export default function Gallery() {
                       preload="metadata"
                       className="w-full aspect-video object-cover mb-6"
                     >
-                    
+
                     </video>
 
                     <p className="text-brand-white/70 text-sm leading-relaxed">
@@ -531,6 +573,16 @@ export default function Gallery() {
               No videos available for {activeSchool} yet.
             </div>
           )}
+
+                      {/* Video Gallery Pagination */}
+            {!loadingGallery && !galleryError && (
+              <Pagination
+                currentPage={videoPagination.currentPage || 1}
+                totalPages={videoPagination.totalPages || 0}
+                onPageChange={setVideoPage}
+                light
+              />
+            )}
 
         </div>
       </section>

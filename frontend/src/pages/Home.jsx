@@ -54,7 +54,7 @@ export default function Home() {
   //   };
   // }, []);
 
-  const { media, loading: loadingMedia} = useWebsiteMedia();
+  const { media, loading: loadingMedia } = useWebsiteMedia();
 
   return (
     <>
@@ -69,55 +69,55 @@ export default function Home() {
       </Helmet>
 
       <main className="w-full">
-  {!loadingMedia && (
-    <>
-      <HeroCinematic
-        heroMedia={media['home/hero']}
-      />
+        {!loadingMedia && (
+          <>
+            <HeroCinematic
+              heroMedia={media['home/hero']}
+            />
 
-      {media['home/intro']?.mediaUrl && (
-        <EditorialSplit
-          heading={homeData.intro.heading}
-          subheading={homeData.intro.subheading}
-          body={homeData.intro.body}
-          imageSrc={media['home/intro'].mediaUrl}
-          imageAlt={
-            media['home/intro']?.altText ||
-            'Students in an Indian school learning'
-          }
-          reverse={false}
-        />
-      )}
+            <EditorialSplit
+              heading={homeData.intro.heading}
+              subheading={homeData.intro.subheading}
+              body={homeData.intro.body}
+              imageSrc={media['home/intro']?.mediaUrl || null}
+              imageAlt={
+                media['home/intro']?.altText ||
+                'Students in an Indian school learning'
+              }
+              reverse={false}
+            />
 
-      <FeatureGrid
-        title="A Glimpse of Our School"
-        features={homeData.glimpse.map((feature, index) => ({
-          ...feature,
-          image: media[`home/glimpse-${index + 1}`]?.mediaUrl || '',
-        }))}
-      />
+            <FeatureGrid
+              title="A Glimpse of Our School"
+              features={homeData.glimpse.map((feature, index) => ({
+                ...feature,
+                image: media[`home/glimpse-${index + 1}`]?.mediaUrl || null,
+              }))}
+            />
 
-      <QuoteSection
-        quote={homeData.quote.text}
-        author={homeData.quote.author}
-      />
+            
 
-      <VisionMission
-        vision={homeData.visionMission.vision}
-        mission={homeData.visionMission.mission}
-      />
+            <QuoteSection
+              quote={homeData.quote.text}
+              author={homeData.quote.author}
+            />
 
-      <WhyOurSchool
-        features={homeData.whyOurSchool.map((feature, index) => ({
-          ...feature,
-          image: media[`home/why-${index + 1}`]?.mediaUrl || '',
-        }))}
-      />
+            <VisionMission
+              vision={homeData.visionMission.vision}
+              mission={homeData.visionMission.mission}
+            />
 
-      <Timeline events={homeData.journey} />
-    </>
-  )}
-</main>
+            <WhyOurSchool
+              features={homeData.whyOurSchool.map((feature, index) => ({
+                ...feature,
+                image: media[`home/why-${index + 1}`]?.mediaUrl || null,
+              }))}
+            />
+
+            <Timeline events={homeData.journey} />
+          </>
+        )}
+      </main>
     </>
   )
 }

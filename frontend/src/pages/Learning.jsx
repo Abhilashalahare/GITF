@@ -22,14 +22,11 @@ export default function Learning() {
         colorClass="bg-[#7E5CAD] text-brand-white"
       />
 
-      {/* Render each section using EditorialSplit with alternating layouts */}
+
       {!loadingMedia &&
         learningData.sections.map((section, index) => {
           const placementKey = `learning/${index + 1}`;
           const uploadedMedia = media?.[placementKey];
-
-          // Don't render the section until its uploaded image exists.
-          if (!uploadedMedia?.mediaUrl) return null;
 
           return (
             <EditorialSplit
@@ -37,8 +34,8 @@ export default function Learning() {
               heading={section.heading}
               subheading={section.subheading}
               body={section.body}
-              imageSrc={uploadedMedia.mediaUrl}
-              imageAlt={uploadedMedia.altText || section.heading}
+              imageSrc={uploadedMedia?.mediaUrl || null}
+              imageAlt={uploadedMedia?.altText || section.heading}
               reverse={index % 2 !== 0}
             />
           );

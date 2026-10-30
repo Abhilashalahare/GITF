@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import Pagination from '../../components/ui/Pagination';
 import {
   LuImages,
   LuPlus,
@@ -40,7 +41,10 @@ const categories = [
 ];
 
 export default function AdminGallery() {
+
   const [activeSchool, setActiveSchool] = useState('Sector 6');
+  const PAGE_SIZE = 6;
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [items, setItems] = useState([]);
 
@@ -60,6 +64,7 @@ export default function AdminGallery() {
     category: '',
     files: [],
   });
+
 
   // --------------------------------------------------
   // FETCH GALLERY
@@ -264,13 +269,29 @@ export default function AdminGallery() {
     (item) => item.school === activeSchool
   );
 
+  // Pagination calculations
+  const totalPages = Math.ceil(schoolItems.length / PAGE_SIZE);
+
+  const paginatedItems = schoolItems.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  useEffect(() => {
+  if (totalPages > 0 && currentPage > totalPages) {
+    setCurrentPage(totalPages);
+  } else if (totalPages === 0 && currentPage !== 1) {
+    setCurrentPage(1);
+  }
+}, [currentPage, totalPages]);
+
   return (
     <>
       <Helmet>
         <title>Gallery Management | GITF Admin</title>
       </Helmet>
 
-      <div className="min-h-screen">
+      <div className="min-h-full">
 
         {/* HEADER */}
         <header className="bg-white border-b border-gray-200 px-6 md:px-10 py-6">
@@ -309,7 +330,10 @@ export default function AdminGallery() {
             {schools.map((school) => (
               <button
                 key={school}
-                onClick={() => setActiveSchool(school)}
+                onClick={() => {
+                  setActiveSchool(school);
+                  setCurrentPage(1);
+                }}
                 className={`px-8 py-3 text-xs font-bold uppercase tracking-widest transition-colors ${activeSchool === school
                   ? 'bg-[#7E5CAD] text-white'
                   : 'text-[#7E5CAD] hover:bg-[#7E5CAD]/10'
@@ -386,7 +410,7 @@ export default function AdminGallery() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
 
-                {schoolItems.map((item) => (
+                {paginatedItems.map((item) => (
 
                   <div
                     key={item._id}
@@ -467,6 +491,15 @@ export default function AdminGallery() {
 
               </div>
 
+            )}
+
+            {/* Pagination */}
+            {!loading && schoolItems.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             )}
 
           </div>

@@ -1,5 +1,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Pagination from '../../components/ui/Pagination';
 
 const API_URL = `${(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000').replace(/\/$/, '')
   }/api/website-media`;
@@ -79,6 +80,8 @@ export default function AdminWebsiteMedia() {
   const [form, setForm] = useState(initialForm);
   const [file, setFile] = useState(null);
   const [filter, setFilter] = useState('all');
+  const PAGE_SIZE = 6;
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [busyId, setBusyId] = useState(null);
@@ -303,10 +306,28 @@ export default function AdminWebsiteMedia() {
     }
   };
 
+  // Filter media by website section
   const visibleMedia =
     filter === 'all'
       ? media
       : media.filter((item) => item.section === filter);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(visibleMedia.length / PAGE_SIZE);
+
+  const paginatedMedia = visibleMedia.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  // Keep the current page valid after deleting media
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    } else if (totalPages === 0 && currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
 
   const getSectionLabel = (value) =>
     sections.find((section) => section.value === value)?.label || value;
@@ -315,7 +336,7 @@ export default function AdminWebsiteMedia() {
     'w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-full bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
@@ -507,7 +528,10 @@ export default function AdminWebsiteMedia() {
             <select
               aria-label="Filter media by website section"
               value={filter}
-              onChange={(event) => setFilter(event.target.value)}
+              onChange={(event) => {
+                setFilter(event.target.value);
+                setCurrentPage(1);
+              }}
               className={inputClass}
             >
               <option value="all">All Sections</option>
@@ -530,7 +554,7 @@ export default function AdminWebsiteMedia() {
             </div>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleMedia.map((item) => (
+              {paginatedMedia.map((item) => (
                 <article
                   key={item._id}
                   className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
@@ -607,6 +631,14 @@ export default function AdminWebsiteMedia() {
                 </article>
               ))}
             </div>
+          )}
+          {/* Pagination */}
+          {!fetching && visibleMedia.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           )}
         </section>
       </div>

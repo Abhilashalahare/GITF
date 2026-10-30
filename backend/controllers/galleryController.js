@@ -178,16 +178,105 @@ export const uploadGalleryItem = async (req, res) => {
  * Get Gallery Items
  * GET /api/gallery
  */
+/*
+ * Get Gallery Items with server-side pagination and filtering
+ * GET /api/gallery?page=1&limit=12&school=Sector%206&mediaType=image
+ */
 export const getGalleryItems = async (req, res) => {
   try {
-    const items = await GalleryItem.find()
-      .sort({ createdAt: -1 })
-      .lean();
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const requestedLimit = Number.parseInt(req.query.limit, 10) || 12;
+
+    // Prevent excessively large requests.
+    const limit = Math.min(24, Math.max(1, requestedLimit));
+    const skip = (page - 1) * limit;
+
+    const { school, year, category, mediaType } = req.query;
+
+    const filter = {};
+
+    if (school) {
+      if (!['Sector 6', 'Sector 11'].includes(school)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid school selected.',
+        });
+      }
+
+      filter.school = school;
+    }
+
+    if (year) {
+      if (!/^\d{4}$/.test(year)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid year.',
+        });
+      }
+
+      filter.year = year;
+    }
+
+    if (mediaType) {
+      if (!['image', 'video'].includes(mediaType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid media type.',
+        });
+      }
+
+      filter.mediaType = mediaType;
+    }
+
+    if (category && category !== 'All') {
+      filter.category = category;
+    }
+
+    const [items, totalRecords, availableYears, availableCategories] =
+      await Promise.all([
+        GalleryItem.find(filter)
+          .sort({ createdAt: -1, _id: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+
+        GalleryItem.countDocuments(filter),
+
+        // Load filter options independently of the current page.
+        school
+          ? GalleryItem.distinct('year', { school })
+          : GalleryItem.distinct('year'),
+
+        // Categories are photo filters for the selected school/year.
+        GalleryItem.distinct('category', {
+          ...(school ? { school } : {}),
+          ...(year ? { year } : {}),
+          mediaType: 'image',
+        }),
+      ]);
+
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    res.set('Cache-Control', 'no-store');
 
     return res.status(200).json({
       success: true,
-      count: items.length,
       items,
+      count: items.length,
+      pagination: {
+        currentPage: page,
+        limit,
+        totalRecords,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      filters: {
+        years: availableYears.sort(
+          (a, b) => Number(b) - Number(a)
+        ),
+        categories: availableCategories.sort(),
+      },
     });
   } catch (error) {
     console.error('Gallery Fetch Error:', error);
