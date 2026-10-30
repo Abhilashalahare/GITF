@@ -109,8 +109,18 @@ app.use(cookieParser());
  * ROUTES
  * --------------------------------------------------
  */
+app.use('/uploads', (req, res, next) => {
+  console.log('Upload request:', req.originalUrl);
+  next();
+});
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// app.use('/uploads', (req, res, next) => {
+//   console.log('Uploads request received:', req.originalUrl);
+//   console.log('Uploads directory:', path.join(__dirname, 'uploads'));
+//   next();
+// });
 
 app.use('/api/contact', contactRoutes);
 

@@ -6,19 +6,40 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Absolute path to backend/uploads/gallery
 const uploadDir = path.resolve(__dirname, '../uploads/gallery');
 
-// Safely remove files uploaded in a failed request
+// Resolve and validate a file's actual location.
+const getSafeFilePath = (file) => {
+  if (!file?.filename) {
+    throw new Error('Uploaded file has no filename.');
+  }
+
+  const filePath = path.resolve(file.path || path.join(uploadDir, file.filename));
+  const relativePath = path.relative(uploadDir, filePath);
+
+  // Reject paths outside uploads/gallery.
+  if (
+    !relativePath ||
+    relativePath.startsWith(`..${path.sep}`) ||
+    relativePath === '..' ||
+    path.isAbsolute(relativePath)
+  ) {
+    throw new Error('Uploaded file is outside the gallery directory.');
+  }
+
+  return filePath;
+};
+
+// Clean up files from a failed upload request.
 const cleanupLocalFiles = async (files = []) => {
   await Promise.allSettled(
     files.map(async (file) => {
-      if (file.filename) {
-        const filePath = path.resolve(uploadDir, file.filename);
-
-        // Ensure the file is inside the gallery upload directory
-        if (path.dirname(filePath) === uploadDir) {
-          await fs.unlink(filePath);
+      try {
+        const filePath = getSafeFilePath(file);
+        await fs.unlink(filePath);
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          console.error('Gallery file cleanup error:', error.message);
         }
       }
     })
@@ -31,6 +52,7 @@ const cleanupLocalFiles = async (files = []) => {
  */
 export const uploadGalleryItem = async (req, res) => {
   const files = req.files || [];
+  let savedItems = [];
 
   try {
     if (files.length === 0) {
@@ -85,21 +107,38 @@ export const uploadGalleryItem = async (req, res) => {
       });
     }
 
-    const documents = files.map((file) => {
-      const isVideo = file.mimetype?.startsWith('video/');
+    // Verify every file exists before creating database records.
+    const documents = await Promise.all(
+      files.map(async (file) => {
+        const filePath = getSafeFilePath(file);
 
-      return {
-        title: title.trim(),
-        school,
-        year: year.trim(),
-        category: category.trim(),
-        mediaUrl: `/uploads/gallery/${file.filename}`,
-        filename: file.filename,
-        mediaType: isVideo ? 'video' : 'image',
-      };
-    });
+        await fs.access(filePath);
 
-    const savedItems = await GalleryItem.insertMany(documents);
+        const actualFilename = path.basename(filePath);
+        const isVideo = file.mimetype?.startsWith('video/');
+
+        console.log('Gallery upload verification:', {
+          originalFilename: file.originalname,
+          actualFilename,
+          filePath,
+          fileExists: true,
+          mediaUrl: `/uploads/gallery/${actualFilename}`,
+        });
+
+        return {
+          title: title.trim(),
+          school,
+          year: year.trim(),
+          category: category.trim(),
+          mediaUrl: `/uploads/gallery/${actualFilename}`,
+          filename: actualFilename,
+          mediaType: isVideo ? 'video' : 'image',
+        };
+      })
+    );
+
+    // Save the records only after verifying the uploaded files.
+    savedItems = await GalleryItem.insertMany(documents);
 
     return res.status(201).json({
       success: true,
@@ -109,6 +148,22 @@ export const uploadGalleryItem = async (req, res) => {
     });
   } catch (error) {
     console.error('Gallery Upload Error:', error);
+
+    /*
+     * If a database insertion partially succeeded, remove those
+     * records before cleaning up their corresponding uploaded files.
+     */
+    try {
+      const filenames = files
+        .filter((file) => file.filename)
+        .map((file) => file.filename);
+
+      if (filenames.length > 0) {
+        await GalleryItem.deleteMany({ filename: { $in: filenames } });
+      }
+    } catch (rollbackError) {
+      console.error('Gallery database rollback error:', rollbackError);
+    }
 
     await cleanupLocalFiles(files);
 
@@ -160,12 +215,16 @@ export const deleteGalleryItem = async (req, res) => {
       });
     }
 
-    // Use the stored filename rather than trusting a URL from MongoDB
     if (item.filename) {
       const filePath = path.resolve(uploadDir, item.filename);
+      const relativePath = path.relative(uploadDir, filePath);
 
-      // Prevent paths outside uploads/gallery
-      if (path.dirname(filePath) !== uploadDir) {
+      if (
+        !relativePath ||
+        relativePath.startsWith(`..${path.sep}`) ||
+        relativePath === '..' ||
+        path.isAbsolute(relativePath)
+      ) {
         return res.status(400).json({
           success: false,
           message: 'Invalid gallery filename.',
